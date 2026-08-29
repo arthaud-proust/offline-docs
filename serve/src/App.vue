@@ -4,19 +4,19 @@
     <aside class="sidebar">
       <!-- Tabs -->
       <div class="tabs">
-        <button :class="{ active: mode === 'search' }" @click="mode = 'search'">Recherche</button>
-        <button :class="{ active: mode === 'browse' }" @click="mode = 'browse'">Parcourir</button>
+        <button :class="{ active: mode === 'search' }" @click="mode = 'search'">Search</button>
+        <button :class="{ active: mode === 'browse' }" @click="mode = 'browse'">Browse</button>
       </div>
 
       <!-- Search mode -->
       <template v-if="mode === 'search'">
         <div class="search-wrap">
-          <input v-model="query" type="search" placeholder="Rechercher dans la doc…" autofocus />
+          <input v-model="query" type="search" placeholder="Search the docs…" autofocus />
         </div>
         <div class="filters">
           <label class="toggle-row">
             <input type="checkbox" v-model="titlesOnly" />
-            Titres uniquement
+            Titles only
           </label>
           <div class="chips">
             <button
@@ -28,8 +28,8 @@
         </div>
         <div class="status">{{ status }}</div>
         <div class="results">
-          <div v-if="!query || query.length < 2" class="empty">Tape pour chercher</div>
-          <div v-else-if="results.length === 0 && status !== 'Recherche…'" class="empty">Aucun résultat</div>
+          <div v-if="!query || query.length < 2" class="empty">Type to search</div>
+          <div v-else-if="results.length === 0 && status !== 'Searching…'" class="empty">No results</div>
           <div
             v-for="r in results" :key="r.path"
             class="result" :class="{ active: activeFile === r.path }"
@@ -57,7 +57,7 @@
         </div>
         <div class="results">
           <FileTree v-if="browseSource" :source="browseSource" @open="openFile" />
-          <div v-else class="empty">Choisis une source</div>
+          <div v-else class="empty">Select a source</div>
         </div>
       </template>
     </aside>
@@ -69,7 +69,7 @@
         <div v-if="contentType === 'md'" class="markdown" v-html="renderedContent" />
         <iframe v-else-if="contentType === 'html'" class="html-frame" :src="iframeSrc" />
         <pre v-else-if="contentType === 'raw'" class="raw">{{ rawContent }}</pre>
-        <div v-else class="empty" style="padding:40px">Ouvre un fichier</div>
+        <div v-else class="empty" style="padding:40px">Open a file</div>
       </div>
     </main>
   </div>
@@ -111,7 +111,7 @@ watch([query, titlesOnly, excluded], () => {
 async function doSearch() {
   const q = query.value.trim();
   if (q.length < 2) { results.value = []; status.value = ""; return; }
-  status.value = "Recherche…";
+  status.value = "Searching…";
   const active = allSources.value.filter((s) => !excluded.value.includes(s));
   const params = new URLSearchParams({
     q,
@@ -120,7 +120,7 @@ async function doSearch() {
   });
   const data = await fetch("/search?" + params).then((r) => r.json());
   results.value = data;
-  status.value = data.length ? `${data.length} résultat(s)` : "Aucun résultat";
+  status.value = data.length ? `${data.length} result(s)` : "No results";
 }
 
 async function openFile(r) {
