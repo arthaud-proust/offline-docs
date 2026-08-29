@@ -1,20 +1,22 @@
 <template>
   <div class="node">
     <!-- Directory -->
-    <div v-if="entry.isDir" class="node-dir" @click="toggle">
-      <span class="icon">{{ open ? "▾" : "▸" }}</span>
-      <span class="name">{{ entry.name }}</span>
-    </div>
-    <div v-if="entry.isDir && open" class="node-children">
-      <TreeNode
-        v-for="child in children"
-        :key="child.path"
-        :entry="child"
-        :source="source"
-        @open="$emit('open', $event)"
-      />
-      <div v-if="loading" class="loading">…</div>
-    </div>
+    <template v-if="entry.isDir">
+      <div class="node-dir" @click="toggle">
+        <span class="icon">{{ open ? "▾" : "▸" }}</span>
+        <span class="name">{{ entry.name }}</span>
+      </div>
+      <div v-if="open" class="node-children">
+        <TreeNode
+          v-for="child in children"
+          :key="child.path"
+          :entry="child"
+          :source="source"
+          @open="$emit('open', $event)"
+        />
+        <div v-if="loading" class="loading">…</div>
+      </div>
+    </template>
 
     <!-- File -->
     <div v-else class="node-file" @click="$emit('open', entry)">

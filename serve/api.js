@@ -1,9 +1,38 @@
 import { exec } from "child_process";
-import { readFile, readdir } from "fs/promises";
+import { readFile, readdir, stat } from "fs/promises";
 import { existsSync } from "fs";
-import { join, relative, basename, extname } from "path";
+import { join, relative, extname } from "path";
 import { promisify } from "util";
 import { ROOT, SEARCH_DIRS } from "./config.js";
+
+const MIME = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+  gif: "image/gif", svg: "image/svg+xml", webp: "image/webp",
+  ico: "image/x-icon", mp4: "video/mp4",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf",
+};
+
+const ASSET_ROOTS = [
+  join(ROOT, "docs/tailwindcss/public"),
+  join(ROOT, "docs/tailwindcss/src/docs"),
+  join(ROOT, "docs/filament/docs-assets"),
+];
+
+export async function serveAsset(urlPath) {
+  for (const root of ASSET_ROOTS) {
+    const candidate = join(root, urlPath);
+    if (!candidate.startsWith(root)) continue;
+    if (!existsSync(candidate)) continue;
+    try {
+      const s = await stat(candidate);
+      if (!s.isFile()) continue;
+      const ext = extname(candidate).slice(1).toLowerCase();
+      const body = await readFile(candidate);
+      return { status: 200, body, type: MIME[ext] ?? "application/octet-stream" };
+    } catch { continue; }
+  }
+  return null;
+}
 
 const execAsync = promisify(exec);
 
@@ -71,6 +100,32 @@ export async function search(query, selectedSources, titlesOnly) {
   return results.slice(0, 50);
 }
 
+async function dirHasContent(absDir, exts) {
+  try {
+    const items = await readdir(absDir, { withFileTypes: true });
+    for (const item of items) {
+      if (item.isDirectory()) {
+        if (await dirHasContent(join(absDir, item.name), exts)) return true;
+      } else if (exts.includes(extname(item.name))) {
+        return true;
+      }
+    }
+  } catch { }
+  return false;
+}
+
+async function dirSingleIndex(absDir, exts) {
+  try {
+    const items = await readdir(absDir, { withFileTypes: true });
+    if (items.some((i) => i.isDirectory())) return null;
+    const matching = items.filter((i) => exts.includes(extname(i.name)));
+    if (matching.length === 1 && matching[0].name.startsWith("index.")) {
+      return join(absDir, matching[0].name);
+    }
+  } catch { }
+  return null;
+}
+
 export async function listTree(source, subpath) {
   const dirs = SEARCH_DIRS.filter((d) => d.label === source);
   if (!dirs.length) return [];
@@ -89,7 +144,12 @@ export async function listTree(source, subpath) {
       const itemSubpath = subpath ? join(subpath, item.name) : item.name;
 
       if (item.isDirectory()) {
-        entries.push({ name: item.name, path: abs, rel, subpath: itemSubpath, isDir: true });
+        const indexPath = await dirSingleIndex(abs, dir.exts);
+        if (indexPath) {
+          entries.push({ name: item.name, path: indexPath, rel: relative(ROOT, indexPath), subpath: itemSubpath, isDir: false });
+        } else if (await dirHasContent(abs, dir.exts)) {
+          entries.push({ name: item.name, path: abs, rel, subpath: itemSubpath, isDir: true });
+        }
       } else if (dir.exts.includes(extname(item.name))) {
         entries.push({ name: item.name, path: abs, rel, subpath: itemSubpath, isDir: false });
       }
