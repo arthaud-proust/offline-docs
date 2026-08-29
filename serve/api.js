@@ -7,7 +7,9 @@ import { ROOT, SEARCH_DIRS } from "./config.js";
 
 const execAsync = promisify(exec);
 
-export const SOURCES = [...new Set(SEARCH_DIRS.map((d) => d.label))];
+export const SOURCES = [
+  ...new Set(SEARCH_DIRS.filter((d) => existsSync(join(ROOT, d.path))).map((d) => d.label)),
+];
 
 function escERE(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
