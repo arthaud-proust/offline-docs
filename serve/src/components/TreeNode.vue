@@ -47,7 +47,7 @@ async function toggle() {
 </script>
 
 <style scoped>
-.node { font-size: 12px }
+.node { font-size: 14px }
 .node-dir {
   display: flex;
   align-items: center;

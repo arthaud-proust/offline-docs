@@ -170,7 +170,7 @@ function toggleSource(src) {
 .tabs button {
   flex: 1; padding: 9px 4px;
   background: none; border: none; border-bottom: 2px solid transparent;
-  color: var(--muted); font-size: 13px; cursor: pointer;
+  color: var(--muted); font-size: 15px; cursor: pointer;
   transition: all .15s;
 }
 .tabs button.active { color: var(--accent); border-bottom-color: var(--accent) }
@@ -181,7 +181,7 @@ function toggleSource(src) {
   width: 100%; padding: 7px 10px;
   border-radius: 7px; border: 1px solid var(--border);
   background: var(--bg3); color: var(--text);
-  font-size: 13px; outline: none;
+  font-size: 15px; outline: none;
 }
 .search-wrap input:focus { border-color: var(--accent) }
 
@@ -192,47 +192,47 @@ function toggleSource(src) {
 }
 .toggle-row {
   display: flex; align-items: center; gap: 7px;
-  font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
+  font-size: 14px; color: var(--muted); cursor: pointer; user-select: none;
 }
 .toggle-row input { accent-color: var(--accent); cursor: pointer }
 
 .chips { display: flex; flex-wrap: wrap; gap: 4px }
 .chip {
   padding: 2px 9px; border-radius: 20px;
-  font-size: 11px; font-weight: 600; cursor: pointer;
+  font-size: 13px; font-weight: 600; cursor: pointer;
   border: 1px solid transparent;
   background: var(--bg3); color: var(--muted);
   transition: all .15s; user-select: none;
 }
 .chip.active { background: var(--accent-dim); color: var(--accent); border-color: #2a5090 }
 
-.status { font-size: 11px; color: var(--muted); padding: 4px 10px; min-height: 20px; border-bottom: 1px solid var(--border) }
+.status { font-size: 13px; color: var(--muted); padding: 4px 10px; min-height: 22px; border-bottom: 1px solid var(--border) }
 
 .results { flex: 1; overflow-y: auto; padding: 4px }
-.empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px }
+.empty { padding: 24px; text-align: center; color: var(--muted); font-size: 15px }
 
 .result { padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 1px }
 .result:hover { background: #161d2a }
 .result.active { background: #1a2a40 }
 .result-meta { display: flex; align-items: center; gap: 6px; min-width: 0 }
 .result-label {
-  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
   background: var(--bg3); color: var(--accent); flex-shrink: 0;
 }
-.result-path { font-size: 11px; color: var(--muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.result-snippet { font-size: 12px; color: #4a5568; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.result-path { font-size: 13px; color: var(--muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.result-snippet { font-size: 14px; color: #4a5568; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 
 /* Main */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0 }
 .file-bar {
-  padding: 6px 14px; font-size: 11px; font-family: monospace;
+  padding: 6px 14px; font-size: 13px; font-family: monospace;
   color: var(--muted); border-bottom: 1px solid var(--border);
   background: var(--bg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;
 }
 .content-wrap { flex: 1; overflow: auto }
 .html-frame { width: 100%; height: 100%; border: none; background: #fff }
 .raw {
-  padding: 20px 24px; font-family: 'Menlo', monospace; font-size: 13px;
+  padding: 20px 24px; font-family: 'Menlo', monospace; font-size: 15px;
   line-height: 1.7; color: #cbd5e1; white-space: pre-wrap; word-break: break-word;
 }
 </style>
