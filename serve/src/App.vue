@@ -80,12 +80,19 @@ import { ref, watch, onMounted } from "vue";
 import FileTree from "./components/FileTree.vue";
 import { initMarkdown, renderMarkdown } from "./composables/markdown.js";
 
-const mode          = ref("search");
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; } catch { return fallback; }
+}
+function save(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { }
+}
+
+const mode          = ref(load("mode", "search"));
 const query         = ref("");
-const titlesOnly    = ref(true);
+const titlesOnly    = ref(load("titlesOnly", true));
 const allSources    = ref([]);
-const excluded      = ref([]);
-const browseSource  = ref(null);
+const excluded      = ref(load("excluded", []));
+const browseSource  = ref(load("browseSource", null));
 const results       = ref([]);
 const status        = ref("");
 const activeFile    = ref(null);
@@ -96,6 +103,11 @@ const iframeSrc     = ref("");
 
 let debounceTimer = null;
 let markdownReady = false;
+
+watch(mode,         (v) => save("mode", v));
+watch(titlesOnly,   (v) => save("titlesOnly", v));
+watch(excluded,     (v) => save("excluded", v), { deep: true });
+watch(browseSource, (v) => save("browseSource", v));
 
 onMounted(async () => {
   allSources.value = await fetch("/sources").then((r) => r.json());
