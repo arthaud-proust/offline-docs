@@ -27,11 +27,23 @@
     <!-- Content -->
     <main class="main">
       <div class="file-bar">{{ activeFile ?? '—' }}</div>
-      <div class="content-wrap">
-        <div v-if="contentType === 'md'" class="markdown" v-html="renderedContent" />
-        <iframe v-else-if="contentType === 'html'" class="html-frame" :src="iframeSrc" />
-        <pre v-else-if="contentType === 'raw'" class="raw">{{ rawContent }}</pre>
-        <div v-else class="empty" style="padding:40px">Open a file</div>
+      <div class="content-row">
+        <div class="content-wrap">
+          <div v-if="contentType === 'md'" class="markdown" v-html="renderedContent" />
+          <iframe v-else-if="contentType === 'html'" class="html-frame" :src="iframeSrc" />
+          <pre v-else-if="contentType === 'raw'" class="raw">{{ rawContent }}</pre>
+          <div v-else class="empty" style="padding:40px">Open a file</div>
+        </div>
+        <nav v-if="toc.length" class="toc">
+          <div class="toc-title">On this page</div>
+          <a
+            v-for="h in toc" :key="h.id"
+            class="toc-item"
+            :class="['toc-h' + h.level, { active: activeHeading === h.id }]"
+            :href="'#' + h.id"
+            @click.prevent="scrollToHeading(h.id)"
+          >{{ h.text }}</a>
+        </nav>
       </div>
     </main>
   </div>
@@ -52,7 +64,7 @@ import { ref, watch, onMounted } from "vue";
 import { onKeyStroke } from "@vueuse/core";
 import FileTree from "./components/FileTree.vue";
 import SearchModal from "./components/SearchModal.vue";
-import { initMarkdown, renderMarkdown } from "./composables/markdown.js";
+import { initMarkdown, renderMarkdown, extractHeadings } from "./composables/markdown.js";
 
 function load(key, fallback) {
   try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; } catch { return fallback; }
@@ -70,6 +82,8 @@ const contentType   = ref("");
 const renderedContent = ref("");
 const rawContent    = ref("");
 const iframeSrc     = ref("");
+const toc           = ref([]);
+const activeHeading = ref(null);
 
 let markdownReady = false;
 
@@ -88,6 +102,8 @@ onMounted(async () => {
 
 async function openFile(r) {
   activeFile.value = r.path;
+  toc.value = [];
+  activeHeading.value = null;
   const ext = r.path.split(".").pop().toLowerCase();
 
   if (ext === "html") {
@@ -100,10 +116,17 @@ async function openFile(r) {
   if (ext === "md" || ext === "mdx") {
     contentType.value = "md";
     renderedContent.value = markdownReady ? renderMarkdown(text) : text;
+    toc.value = extractHeadings(text);
   } else {
     contentType.value = "raw";
     rawContent.value = text;
   }
+}
+
+function scrollToHeading(id) {
+  activeHeading.value = id;
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 </script>
@@ -162,10 +185,38 @@ async function openFile(r) {
   color: var(--muted); border-bottom: 1px solid var(--border);
   background: var(--bg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;
 }
+.content-row { flex: 1; display: flex; overflow: hidden; min-height: 0 }
 .content-wrap { flex: 1; overflow: auto }
 .html-frame { width: 100%; height: 100%; border: none; background: #fff }
 .raw {
   padding: 20px 24px; font-family: 'Menlo', monospace; font-size: 15px;
   line-height: 1.7; color: #cbd5e1; white-space: pre-wrap; word-break: break-word;
 }
+
+/* TOC */
+.toc {
+  width: 220px; min-width: 180px; flex-shrink: 0;
+  overflow-y: auto; padding: 20px 12px 20px 0;
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.toc-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted); padding: 0 12px 8px; flex: none;
+}
+.toc-item {
+  display: block; flex: none;
+  padding: 3px 12px;
+  font-size: 13px; color: var(--muted);
+  text-decoration: none; border-radius: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .12s, background .12s;
+  line-height: 1.5;
+}
+.toc-item:hover { color: var(--text); background: var(--bg3) }
+.toc-item.active { color: var(--accent) }
+.toc-h1 { font-weight: 600 }
+.toc-h2 { font-weight: 500 }
+.toc-h3 { padding-left: 22px; font-size: 12px }
+.toc-h4, .toc-h5, .toc-h6 { padding-left: 32px; font-size: 12px; opacity: .75 }
 </style>
