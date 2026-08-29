@@ -2,64 +2,26 @@
   <div class="layout">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <!-- Tabs -->
-      <div class="tabs">
-        <button :class="{ active: mode === 'search' }" @click="mode = 'search'">Search</button>
-        <button :class="{ active: mode === 'browse' }" @click="mode = 'browse'">Browse</button>
+      <div class="sidebar-head">
+        <button class="search-trigger" @click="showSearch = true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
       </div>
-
-      <!-- Search mode -->
-      <template v-if="mode === 'search'">
-        <div class="search-wrap">
-          <input v-model="query" type="search" placeholder="Search the docs…" autofocus />
+      <div class="filters">
+        <div class="chips">
+          <button
+            v-for="src in allSources" :key="src"
+            class="chip" :class="{ active: browseSource === src }"
+            @click="browseSource = src"
+          >{{ src }}</button>
         </div>
-        <div class="filters">
-          <label class="toggle-row">
-            <input type="checkbox" v-model="titlesOnly" />
-            Titles only
-          </label>
-          <div class="chips">
-            <button
-              v-for="src in allSources" :key="src"
-              class="chip" :class="{ active: isActive(src) }"
-              @click="toggleSource(src)"
-            >{{ src }}</button>
-          </div>
-        </div>
-        <div class="status">{{ status }}</div>
-        <div class="results">
-          <div v-if="!query || query.length < 2" class="empty">Type to search</div>
-          <div v-else-if="results.length === 0 && status !== 'Searching…'" class="empty">No results</div>
-          <div
-            v-for="r in results" :key="r.path"
-            class="result" :class="{ active: activeFile === r.path }"
-            @click="openFile(r)"
-          >
-            <div class="result-meta">
-              <span class="result-label">{{ r.label }}</span>
-              <span class="result-path">{{ r.rel }}</span>
-            </div>
-            <div v-if="r.snippets[0]" class="result-snippet">{{ r.snippets[0] }}</div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Browse mode -->
-      <template v-else>
-        <div class="filters">
-          <div class="chips">
-            <button
-              v-for="src in allSources" :key="src"
-              class="chip" :class="{ active: browseSource === src }"
-              @click="browseSource = src"
-            >{{ src }}</button>
-          </div>
-        </div>
-        <div class="results">
-          <FileTree v-if="browseSource" :source="browseSource" @open="openFile" />
-          <div v-else class="empty">Select a source</div>
-        </div>
-      </template>
+      </div>
+      <div class="tree-area">
+        <FileTree v-if="browseSource" :source="browseSource" @open="openFile" />
+        <div v-else class="empty">Select a source</div>
+      </div>
     </aside>
 
     <!-- Content -->
@@ -73,11 +35,23 @@
       </div>
     </main>
   </div>
+
+  <!-- Search modal -->
+  <SearchModal
+    v-if="showSearch"
+    :sources="allSources"
+    :excluded="excluded"
+    @update:excluded="excluded = $event"
+    @close="showSearch = false"
+    @open="openFile"
+  />
 </template>
 
 <script setup>
 import { ref, watch, onMounted } from "vue";
+import { onKeyStroke } from "@vueuse/core";
 import FileTree from "./components/FileTree.vue";
+import SearchModal from "./components/SearchModal.vue";
 import { initMarkdown, renderMarkdown } from "./composables/markdown.js";
 
 function load(key, fallback) {
@@ -87,53 +61,30 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { }
 }
 
-const mode          = ref(load("mode", "search"));
-const query         = ref("");
-const titlesOnly    = ref(load("titlesOnly", true));
+const showSearch    = ref(false);
 const allSources    = ref([]);
 const excluded      = ref(load("excluded", []));
 const browseSource  = ref(load("browseSource", null));
-const results       = ref([]);
-const status        = ref("");
 const activeFile    = ref(null);
 const contentType   = ref("");
 const renderedContent = ref("");
 const rawContent    = ref("");
 const iframeSrc     = ref("");
 
-let debounceTimer = null;
 let markdownReady = false;
 
-watch(mode,         (v) => save("mode", v));
-watch(titlesOnly,   (v) => save("titlesOnly", v));
 watch(excluded,     (v) => save("excluded", v), { deep: true });
 watch(browseSource, (v) => save("browseSource", v));
+
+onKeyStroke("k", (e) => {
+  if (e.metaKey || e.ctrlKey) { e.preventDefault(); showSearch.value = true; }
+});
 
 onMounted(async () => {
   allSources.value = await fetch("/sources").then((r) => r.json());
   await initMarkdown();
   markdownReady = true;
 });
-
-watch([query, titlesOnly, excluded], () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(doSearch, 280);
-}, { deep: true });
-
-async function doSearch() {
-  const q = query.value.trim();
-  if (q.length < 2) { results.value = []; status.value = ""; return; }
-  status.value = "Searching…";
-  const active = allSources.value.filter((s) => !excluded.value.includes(s));
-  const params = new URLSearchParams({
-    q,
-    sources: active.length === allSources.value.length ? "" : active.join(","),
-    titlesOnly: titlesOnly.value,
-  });
-  const data = await fetch("/search?" + params).then((r) => r.json());
-  results.value = data;
-  status.value = data.length ? `${data.length} result(s)` : "No results";
-}
 
 async function openFile(r) {
   activeFile.value = r.path;
@@ -155,13 +106,6 @@ async function openFile(r) {
   }
 }
 
-function isActive(src) { return !excluded.value.includes(src) }
-
-function toggleSource(src) {
-  const i = excluded.value.indexOf(src);
-  if (i >= 0) excluded.value.splice(i, 1);
-  else excluded.value.push(src);
-}
 </script>
 
 <style scoped>
@@ -169,45 +113,35 @@ function toggleSource(src) {
 
 /* Sidebar */
 .sidebar {
-  width: 340px; min-width: 240px;
+  width: 300px; min-width: 220px;
   display: flex; flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg2);
 }
 
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-}
-.tabs button {
-  flex: 1; padding: 9px 4px;
-  background: none; border: none; border-bottom: 2px solid transparent;
-  color: var(--muted); font-size: 15px; cursor: pointer;
+.sidebar-head { padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+
+.search-trigger {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--muted); font-size: 14px; cursor: pointer;
   transition: all .15s;
 }
-.tabs button.active { color: var(--accent); border-bottom-color: var(--accent) }
-.tabs button:hover:not(.active) { color: var(--text) }
-
-.search-wrap { padding: 10px 10px 6px; border-bottom: 1px solid var(--border) }
-.search-wrap input {
-  width: 100%; padding: 7px 10px;
-  border-radius: 7px; border: 1px solid var(--border);
-  background: var(--bg3); color: var(--text);
-  font-size: 15px; outline: none;
+.search-trigger:hover { border-color: var(--accent); color: var(--text) }
+.search-trigger svg { width: 15px; height: 15px; flex-shrink: 0 }
+.search-trigger span { flex: 1; text-align: left }
+.search-trigger kbd {
+  font-size: 11px; padding: 1px 5px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg2); color: var(--muted);
 }
-.search-wrap input:focus { border-color: var(--accent) }
 
 .filters {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 7px;
+  flex-shrink: 0;
 }
-.toggle-row {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 14px; color: var(--muted); cursor: pointer; user-select: none;
-}
-.toggle-row input { accent-color: var(--accent); cursor: pointer }
-
 .chips { display: flex; flex-wrap: wrap; gap: 4px }
 .chip {
   padding: 2px 9px; border-radius: 20px;
@@ -218,21 +152,8 @@ function toggleSource(src) {
 }
 .chip.active { background: var(--accent-dim); color: var(--accent); border-color: #2a5090 }
 
-.status { font-size: 13px; color: var(--muted); padding: 4px 10px; min-height: 22px; border-bottom: 1px solid var(--border) }
-
-.results { flex: 1; overflow-y: auto; padding: 4px }
+.tree-area { flex: 1; overflow-y: auto; padding: 4px }
 .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 15px }
-
-.result { padding: 7px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 1px }
-.result:hover { background: #161d2a }
-.result.active { background: #1a2a40 }
-.result-meta { display: flex; align-items: center; gap: 6px; min-width: 0 }
-.result-label {
-  font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
-  background: var(--bg3); color: var(--accent); flex-shrink: 0;
-}
-.result-path { font-size: 13px; color: var(--muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.result-snippet { font-size: 14px; color: #4a5568; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 
 /* Main */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0 }

@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { search, serveFile, listTree, SOURCES } from "./api.js";
+import { search, serveFile, listTree, serveAsset, SOURCES } from "./api.js";
 
 export default defineConfig({
   plugins: [
@@ -19,8 +19,7 @@ export default defineConfig({
           if (url.pathname === "/search") {
             const q = (url.searchParams.get("q") || "").trim();
             const sources = (url.searchParams.get("sources") || "").split(",").filter(Boolean);
-            const titlesOnly = url.searchParams.get("titlesOnly") !== "false";
-            const data = q.length >= 2 ? await search(q, sources, titlesOnly) : [];
+            const data = q.length >= 2 ? await search(q, sources) : [];
             res.setHeader("Content-Type", "application/json");
             return res.end(JSON.stringify(data));
           }

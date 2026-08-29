@@ -47,54 +47,75 @@ function shellQuote(s) {
   return "'" + s.replace(/'/g, "'\\''") + "'";
 }
 
-export async function search(query, selectedSources, titlesOnly) {
+export async function search(query, selectedSources) {
   const dirs = selectedSources.length
     ? SEARCH_DIRS.filter((d) => selectedSources.includes(d.label))
     : SEARCH_DIRS;
 
+  const seen = new Set();
   const results = [];
 
-  for (const dir of dirs) {
-    const absPath = join(ROOT, dir.path);
-    if (!existsSync(absPath)) continue;
+  function addResult(filePath, label, snippet, matchType) {
+    if (seen.has(filePath)) return;
+    seen.add(filePath);
+    results.push({ path: filePath, rel: relative(ROOT, filePath), label, snippets: snippet ? [snippet] : [], matchType });
+  }
 
-    const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
-    let flag, pattern;
-
-    if (titlesOnly) {
-      const q = escERE(query);
-      const isMd = dir.exts.some((e) => e === ".md" || e === ".mdx");
-      const isHtml = dir.exts.includes(".html");
-      if (isMd) {
-        flag = "-E";
-        pattern = shellQuote(`^(#{1,6} |title: ).*${q}`);
-      } else if (isHtml) {
-        flag = "-E";
-        pattern = shellQuote(`<h[1-6][^>]*>.*${q}|<title>.*${q}`);
-      } else {
-        continue;
-      }
-    } else {
-      flag = "-F";
-      pattern = shellQuote(query);
-    }
-
-    const cmd = `grep -rn -i ${flag} -m 3 ${includes} ${pattern} '${absPath}' 2>/dev/null`;
-    const { stdout } = await execAsync(cmd, { maxBuffer: 5 * 1024 * 1024 }).catch(() => ({ stdout: "" }));
-
+  function grepByFile(stdout) {
     const byFile = {};
     for (const line of stdout.split("\n").filter(Boolean)) {
       const c1 = line.indexOf(":");
       const c2 = line.indexOf(":", c1 + 1);
       if (c1 < 0 || c2 < 0) continue;
       const file = line.slice(0, c1);
-      const text = line.slice(c2 + 1).trim();
-      if (!byFile[file]) byFile[file] = { path: file, rel: relative(ROOT, file), label: dir.label, snippets: [] };
-      byFile[file].snippets.push(text);
+      if (!byFile[file]) byFile[file] = line.slice(c2 + 1).trim();
     }
+    return byFile;
+  }
 
-    results.push(...Object.values(byFile));
+  // Pass 1: filename match
+  for (const dir of dirs) {
+    const absPath = join(ROOT, dir.path);
+    if (!existsSync(absPath)) continue;
+    const extFilter = dir.exts.map((e) => `-name ${shellQuote("*" + e)}`).join(" -o ");
+    const cmd = `find ${shellQuote(absPath)} -type f -iname ${shellQuote("*" + query + "*")} \\( ${extFilter} \\) 2>/dev/null`;
+    const { stdout } = await execAsync(cmd, { maxBuffer: 2 * 1024 * 1024 }).catch(() => ({ stdout: "" }));
+    for (const filePath of stdout.split("\n").filter(Boolean)) {
+      addResult(filePath, dir.label, "", "filename");
+    }
+  }
+
+  // Pass 2: title match
+  for (const dir of dirs) {
+    const absPath = join(ROOT, dir.path);
+    if (!existsSync(absPath)) continue;
+    const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
+    const q = escERE(query);
+    const isMd = dir.exts.some((e) => e === ".md" || e === ".mdx");
+    const isHtml = dir.exts.includes(".html");
+    let pattern;
+    if (isMd) pattern = shellQuote(`^(#{1,6} |title: ).*${q}`);
+    else if (isHtml) pattern = shellQuote(`<h[1-6][^>]*>.*${q}|<title>.*${q}`);
+    else continue;
+    const cmd = `grep -rn -i -E -m 1 ${includes} ${pattern} ${shellQuote(absPath)} 2>/dev/null`;
+    const { stdout } = await execAsync(cmd, { maxBuffer: 5 * 1024 * 1024 }).catch(() => ({ stdout: "" }));
+    for (const [filePath, snippet] of Object.entries(grepByFile(stdout))) {
+      addResult(filePath, dir.label, snippet, "title");
+    }
+  }
+
+  // Pass 3: content match
+  for (const dir of dirs) {
     if (results.length >= 50) break;
+    const absPath = join(ROOT, dir.path);
+    if (!existsSync(absPath)) continue;
+    const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
+    const cmd = `grep -rn -i -F -m 1 ${includes} ${shellQuote(query)} ${shellQuote(absPath)} 2>/dev/null`;
+    const { stdout } = await execAsync(cmd, { maxBuffer: 5 * 1024 * 1024 }).catch(() => ({ stdout: "" }));
+    for (const [filePath, snippet] of Object.entries(grepByFile(stdout))) {
+      addResult(filePath, dir.label, snippet, "content");
+      if (results.length >= 50) break;
+    }
   }
 
   return results.slice(0, 50);
