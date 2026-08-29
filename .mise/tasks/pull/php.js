@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// @mise description="Download PHP manual and extract into php/"
+// @mise description="Download PHP manual and extract into docs/php/"
 
 import { createWriteStream, mkdirSync } from "fs";
 import { pipeline } from "stream/promises";
@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "../../..");
 const url = "https://www.php.net/distributions/manual/php_manual_en.tar.gz";
-const dest = join(projectRoot, "php");
+const dest = join(projectRoot, "docs/php");
 const tarball = join(projectRoot, "php_manual_en.tar.gz");
 
 console.log("Downloading PHP manual...");

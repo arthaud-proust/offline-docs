@@ -1,12 +1,12 @@
 [submodule "tailwindcss"]
-	path = tailwindcss
+	path = docs/tailwindcss
 	url = git@github.com:tailwindlabs/tailwindcss.com.git
 [submodule "filament"]
-	path = filament
+	path = docs/filament
 	url = git@github.com:filamentphp/filament.git
 [submodule "laravel"]
-	path = laravel
+	path = docs/laravel
 	url = git@github.com:laravel/docs.git
 [submodule "mdn"]
-	path = mdn
+	path = docs/mdn
 	url = git@github.com:mdn/content.git
