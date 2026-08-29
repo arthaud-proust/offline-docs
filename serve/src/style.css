@@ -52,6 +52,10 @@ mark {
   border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 1em 0
 }
 .markdown pre code { background: none; border: none; padding: 0; font-size: .88em; color: #cdd9e5; line-height: 1.6 }
+
+/* Shiki override — use our dark background */
+.markdown .shiki { background: var(--code-bg) !important; border: 1px solid #2a3a50; border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 1em 0; font-size: .88em; line-height: 1.6 }
+.markdown .shiki code { background: none !important }
 .markdown blockquote {
   border-left: 3px solid var(--accent); margin: 1em 0; padding: .5em 1em;
   color: var(--muted); background: var(--bg2); border-radius: 0 6px 6px 0

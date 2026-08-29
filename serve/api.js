@@ -1,7 +1,7 @@
 import { exec } from "child_process";
-import { readFile } from "fs/promises";
+import { readFile, readdir } from "fs/promises";
 import { existsSync } from "fs";
-import { join, relative } from "path";
+import { join, relative, basename, extname } from "path";
 import { promisify } from "util";
 import { ROOT, SEARCH_DIRS } from "./config.js";
 
@@ -67,6 +67,37 @@ export async function search(query, selectedSources, titlesOnly) {
   }
 
   return results.slice(0, 50);
+}
+
+export async function listTree(source, subpath) {
+  const dirs = SEARCH_DIRS.filter((d) => d.label === source);
+  if (!dirs.length) return [];
+
+  const entries = [];
+
+  for (const dir of dirs) {
+    const base = join(ROOT, dir.path);
+    const target = subpath ? join(base, subpath) : base;
+    if (!existsSync(target)) continue;
+
+    const items = await readdir(target, { withFileTypes: true });
+    for (const item of items) {
+      const abs = join(target, item.name);
+      const rel = relative(ROOT, abs);
+      const itemSubpath = subpath ? join(subpath, item.name) : item.name;
+
+      if (item.isDirectory()) {
+        entries.push({ name: item.name, path: abs, rel, subpath: itemSubpath, isDir: true });
+      } else if (dir.exts.includes(extname(item.name))) {
+        entries.push({ name: item.name, path: abs, rel, subpath: itemSubpath, isDir: false });
+      }
+    }
+  }
+
+  return entries.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export async function serveFile(filePath) {
