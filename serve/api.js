@@ -28,6 +28,8 @@ const ASSET_ROOTS = [
     toRootPath("docs/filament/docs-assets"),
 ];
 
+const MAX_BUFFER = 5 * 1024 * 1024;
+
 export async function serveAsset(urlPath) {
     for (const assetRoot of ASSET_ROOTS) {
         const candidate = join(assetRoot, urlPath);
@@ -120,16 +122,14 @@ export async function search(query, selectedSources) {
         if (!existsSync(absPath)) continue;
         const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
         const q = escERE(query);
+        const pattern = shellQuote(`^(#{1,6} |title: ).*${q}`);
         const isMd = dir.exts.some((e) => e === ".md" || e === ".mdx");
-        const isHtml = dir.exts.includes(".html");
-        let pattern;
-        if (isMd) pattern = shellQuote(`^(#{1,6} |title: ).*${q}`);
-        else if (isHtml)
-            pattern = shellQuote(`<h[1-6][^>]*>.*${q}|<title>.*${q}`);
-        else continue;
+
+        if (!isMd) continue;
+
         const cmd = `grep -rn -i -E -m 1 ${includes} ${pattern} ${shellQuote(absPath)} 2>/dev/null`;
         const { stdout } = await execAsync(cmd, {
-            maxBuffer: 5 * 1024 * 1024,
+            maxBuffer: MAX_BUFFER,
         }).catch(() => ({ stdout: "" }));
         for (const [filePath, snippet] of Object.entries(grepByFile(stdout))) {
             addResult(filePath, dir.label, snippet, "title");
@@ -144,7 +144,7 @@ export async function search(query, selectedSources) {
         const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
         const cmd = `grep -rn -i -F -m 1 ${includes} ${shellQuote(query)} ${shellQuote(absPath)} 2>/dev/null`;
         const { stdout } = await execAsync(cmd, {
-            maxBuffer: 5 * 1024 * 1024,
+            maxBuffer: MAX_BUFFER,
         }).catch(() => ({ stdout: "" }));
         for (const [filePath, snippet] of Object.entries(grepByFile(stdout))) {
             addResult(filePath, dir.label, snippet, "content");
