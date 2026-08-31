@@ -1,10 +1,10 @@
 {
-  "name": "offline-docs",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@inquirer/prompts": "^7.4.0",
-    "node-html-markdown": "^2.0.0",
-    "node-html-parser": "^9.0.2"
-  }
+    "name": "offline-docs",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "@inquirer/prompts": "^7.4.0",
+        "node-html-markdown": "^2.0.0",
+        "node-html-parser": "^9.0.2"
+    }
 }
