@@ -267,7 +267,7 @@ function scrollToHeading(id) {
 .tree-area {
     flex: 1;
     overflow-y: auto;
-    padding: 4px;
+    padding: 0 4px;
 }
 .empty {
     padding: 24px;

@@ -5,6 +5,7 @@
             :key="entry.path"
             :entry="entry"
             :source="source"
+            :depth="0"
             @open="$emit('open', $event)"
         />
     </div>

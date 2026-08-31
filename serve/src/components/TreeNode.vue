@@ -2,16 +2,21 @@
     <div class="node">
         <!-- Directory -->
         <template v-if="entry.isDir">
-            <div class="node-dir" @click="toggle">
+            <button
+                class="node-dir"
+                :style="{ '--depth': depth }"
+                @click="toggle"
+            >
                 <span class="icon">{{ open ? "▾" : "▸" }}</span>
                 <span class="name">{{ entry.name }}</span>
-            </div>
+            </button>
             <div v-if="open" class="node-children">
                 <TreeNode
                     v-for="child in children"
                     :key="child.path"
                     :entry="child"
                     :source="source"
+                    :depth="depth + 1"
                     @open="$emit('open', $event)"
                 />
                 <div v-if="loading" class="loading">…</div>
@@ -19,21 +24,25 @@
         </template>
 
         <!-- File -->
-        <div v-else class="node-file" @click="$emit('open', entry)">
+        <button v-else class="node-file" @click="$emit('open', entry)">
             <span class="name">{{ entry.name }}</span>
-        </div>
+        </button>
     </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 
-const props = defineProps({ entry: Object, source: String });
+const props = defineProps({ entry: Object, source: String, depth: Number });
 defineEmits(["open"]);
 
 const open = ref(false);
 const children = ref([]);
 const loading = ref(false);
+
+onMounted(() => {
+    // toggle();
+});
 
 async function toggle() {
     open.value = !open.value;
@@ -51,18 +60,35 @@ async function toggle() {
 <style scoped>
 .node {
     font-size: 14px;
+    position: relative;
 }
+
+.node-dir,
+.node-file {
+    --node-height: 30px;
+    width: 100%;
+    height: var(--node-height);
+    border: none;
+    background: none;
+    padding: 0 8px;
+
+    cursor: pointer;
+
+    color: var(--muted);
+    background: var(--bg2);
+    border-radius: 4px;
+}
+
 .node-dir {
+    position: sticky;
+    z-index: 1;
+    top: calc(var(--node-height) * var(--depth));
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 8px;
-    cursor: pointer;
-    color: var(--muted);
-    border-radius: 4px;
 }
 .node-dir:hover {
-    background: #161d2a;
+    background: var(--bg3);
     color: var(--text);
 }
 .icon {
@@ -75,20 +101,21 @@ async function toggle() {
     font-weight: 600;
 }
 .node-children {
-    margin-left: 14px;
+    position: relative;
+    z-index: 0;
+    margin-left: 12px;
+    padding-left: 4px;
     border-left: 1px solid var(--border);
 }
+
 .node-file {
-    padding: 3px 8px;
-    cursor: pointer;
-    color: #7b8fa3;
-    border-radius: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: left;
 }
 .node-file:hover {
-    background: #161d2a;
+    background: var(--bg3);
     color: var(--text);
 }
 .loading {
