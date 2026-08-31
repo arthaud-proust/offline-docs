@@ -24,7 +24,7 @@
         </template>
 
         <!-- File -->
-        <button v-else class="node-file" @click="$emit('open', entry)">
+        <button v-else class="node-file" @click="$emit('open', entry.path)">
             <span class="name">{{ entry.name }}</span>
         </button>
     </div>

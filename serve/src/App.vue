@@ -48,11 +48,6 @@
                         class="markdown"
                         v-html="renderedContent"
                     />
-                    <iframe
-                        v-else-if="contentType === 'html'"
-                        class="html-frame"
-                        :src="iframeSrc"
-                    />
                     <pre v-else-if="contentType === 'raw'" class="raw">{{
                         rawContent
                     }}</pre>
@@ -145,20 +140,14 @@ onMounted(async () => {
     markdownReady = true;
 });
 
-async function openFile(r) {
-    activeFile.value = r.path;
+async function openFile(path) {
+    activeFile.value = path;
     toc.value = [];
     activeHeading.value = null;
-    const ext = r.path.split(".").pop().toLowerCase();
+    const ext = path.split(".").pop().toLowerCase();
 
-    if (ext === "html") {
-        contentType.value = "html";
-        iframeSrc.value = "/file?path=" + encodeURIComponent(r.path);
-        return;
-    }
-
-    const text = await fetch("/file?path=" + encodeURIComponent(r.path)).then(
-        (r) => r.text(),
+    const text = await fetch("/file?path=" + encodeURIComponent(path)).then(
+        (response) => response.text(),
     );
     if (ext === "md" || ext === "mdx") {
         contentType.value = "md";

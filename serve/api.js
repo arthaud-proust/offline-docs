@@ -19,16 +19,19 @@ const MIME = {
     ttf: "font/ttf",
 };
 
+const toRootPath = (relPath) => join(ROOT, relPath);
+const fromRootPath = (rootPath) => relative(ROOT, rootPath);
+
 const ASSET_ROOTS = [
-    join(ROOT, "docs/tailwindcss/public"),
-    join(ROOT, "docs/tailwindcss/src/docs"),
-    join(ROOT, "docs/filament/docs-assets"),
+    toRootPath("docs/tailwindcss/public"),
+    toRootPath("docs/tailwindcss/src/docs"),
+    toRootPath("docs/filament/docs-assets"),
 ];
 
 export async function serveAsset(urlPath) {
-    for (const root of ASSET_ROOTS) {
-        const candidate = join(root, urlPath);
-        if (!candidate.startsWith(root)) continue;
+    for (const assetRoot of ASSET_ROOTS) {
+        const candidate = join(assetRoot, urlPath);
+        if (!candidate.startsWith(assetRoot)) continue;
         if (!existsSync(candidate)) continue;
         try {
             const s = await stat(candidate);
@@ -51,7 +54,7 @@ const execAsync = promisify(exec);
 
 export const SOURCES = [
     ...new Set(
-        SEARCH_DIRS.filter((d) => existsSync(join(ROOT, d.path))).map(
+        SEARCH_DIRS.filter((d) => existsSync(toRootPath(d.path))).map(
             (d) => d.label,
         ),
     ),
@@ -76,8 +79,7 @@ export async function search(query, selectedSources) {
         if (seen.has(filePath)) return;
         seen.add(filePath);
         results.push({
-            path: filePath,
-            rel: relative(ROOT, filePath),
+            path: fromRootPath(filePath),
             label,
             snippets: snippet ? [snippet] : [],
             matchType,
@@ -98,7 +100,7 @@ export async function search(query, selectedSources) {
 
     // Pass 1: filename match
     for (const dir of dirs) {
-        const absPath = join(ROOT, dir.path);
+        const absPath = toRootPath(dir.path);
         if (!existsSync(absPath)) continue;
         const extFilter = dir.exts
             .map((e) => `-name ${shellQuote("*" + e)}`)
@@ -114,7 +116,7 @@ export async function search(query, selectedSources) {
 
     // Pass 2: title match
     for (const dir of dirs) {
-        const absPath = join(ROOT, dir.path);
+        const absPath = toRootPath(dir.path);
         if (!existsSync(absPath)) continue;
         const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
         const q = escERE(query);
@@ -137,7 +139,7 @@ export async function search(query, selectedSources) {
     // Pass 3: content match
     for (const dir of dirs) {
         if (results.length >= 50) break;
-        const absPath = join(ROOT, dir.path);
+        const absPath = toRootPath(dir.path);
         if (!existsSync(absPath)) continue;
         const includes = dir.exts.map((e) => `--include='*${e}'`).join(" ");
         const cmd = `grep -rn -i -F -m 1 ${includes} ${shellQuote(query)} ${shellQuote(absPath)} 2>/dev/null`;
@@ -187,14 +189,14 @@ export async function listTree(source, subpath) {
     const entries = [];
 
     for (const dir of dirs) {
-        const base = join(ROOT, dir.path);
+        const base = toRootPath(dir.path);
         const target = subpath ? join(base, subpath) : base;
         if (!existsSync(target)) continue;
 
         const items = await readdir(target, { withFileTypes: true });
         for (const item of items) {
             const abs = join(target, item.name);
-            const rel = relative(ROOT, abs);
+            const rel = fromRootPath(abs);
             const itemSubpath = subpath ? join(subpath, item.name) : item.name;
 
             if (item.isDirectory()) {
@@ -202,16 +204,14 @@ export async function listTree(source, subpath) {
                 if (indexPath) {
                     entries.push({
                         name: item.name,
-                        path: indexPath,
-                        rel: relative(ROOT, indexPath),
+                        path: fromRootPath(indexPath),
                         subpath: itemSubpath,
                         isDir: false,
                     });
                 } else if (await dirHasContent(abs, dir.exts)) {
                     entries.push({
                         name: item.name,
-                        path: abs,
-                        rel,
+                        path: rel,
                         subpath: itemSubpath,
                         isDir: true,
                     });
@@ -219,8 +219,7 @@ export async function listTree(source, subpath) {
             } else if (dir.exts.includes(extname(item.name))) {
                 entries.push({
                     name: item.name,
-                    path: abs,
-                    rel,
+                    path: rel,
                     subpath: itemSubpath,
                     isDir: false,
                 });
@@ -234,13 +233,12 @@ export async function listTree(source, subpath) {
     });
 }
 
-export async function serveFile(filePath) {
-    if (!filePath.startsWith(ROOT)) return { status: 403, body: "Forbidden" };
+export async function serveFile(path) {
+    const absPath = toRootPath(path);
+    if (!absPath.startsWith(ROOT)) return { status: 403, body: "Forbidden" };
     try {
-        const body = await readFile(filePath, "utf-8");
-        const ext = filePath.split(".").pop().toLowerCase();
-        const type = ext === "html" ? "text/html" : "text/plain";
-        return { status: 200, body, type };
+        const body = await readFile(absPath, "utf-8");
+        return { status: 200, body, type: "text/plain" };
     } catch {
         return { status: 404, body: "Not found" };
     }

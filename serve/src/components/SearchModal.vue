@@ -59,18 +59,20 @@
                     >
                         <div class="section-header">{{ group.label }}</div>
                         <button
-                            v-for="r in group.items"
-                            :key="r.path"
+                            v-for="result in group.items"
+                            :key="result.path"
                             class="result-btn"
-                            :class="{ focused: focusedPath === r.path }"
-                            @click="select(r)"
-                            @mouseenter="focusedPath = r.path"
+                            :class="{ focused: focusedPath === result.path }"
+                            @click="select(result.path)"
+                            @mouseenter="focusedPath = result.path"
                         >
                             <span
                                 class="result-icon"
-                                :class="'icon-' + r.matchType"
+                                :class="'icon-' + result.matchType"
                             >
-                                <template v-if="r.matchType === 'filename'">
+                                <template
+                                    v-if="result.matchType === 'filename'"
+                                >
                                     <svg
                                         viewBox="0 0 16 16"
                                         fill="currentColor"
@@ -84,20 +86,20 @@
                             </span>
                             <span class="result-body">
                                 <span
-                                    v-if="r.matchType === 'title'"
+                                    v-if="result.matchType === 'title'"
                                     class="result-pagename"
-                                    >{{ pageName(r) }}</span
+                                    >{{ pageName(result) }}</span
                                 >
                                 <span class="result-title">{{
-                                    displayTitle(r)
+                                    displayTitle(result)
                                 }}</span>
                                 <span
                                     v-if="
-                                        r.matchType === 'content' &&
-                                        r.snippets[0]
+                                        result.matchType === 'content' &&
+                                        result.snippets[0]
                                     "
                                     class="result-sub"
-                                    >{{ r.snippets[0] }}</span
+                                    >{{ result.snippets[0] }}</span
                                 >
                             </span>
                             <svg
@@ -166,7 +168,7 @@ watch(query, () => {
 async function doSearch() {
     const q = query.value.trim();
     const active = (props.sources ?? []).filter(
-        (s) => !localExcluded.value.includes(s),
+        (source) => !localExcluded.value.includes(source),
     );
     const params = new URLSearchParams({
         q,
@@ -175,7 +177,9 @@ async function doSearch() {
                 ? ""
                 : active.join(","),
     });
-    const data = await fetch("/search?" + params).then((r) => r.json());
+    const data = await fetch("/search?" + params).then((response) =>
+        response.json(),
+    );
     results.value = data;
     loading.value = false;
     focusedPath.value = data[0]?.path ?? null;
@@ -185,43 +189,47 @@ const flat = computed(() => results.value);
 
 const grouped = computed(() => {
     const map = new Map();
-    for (const r of results.value) {
-        if (!map.has(r.label)) map.set(r.label, []);
-        map.get(r.label).push(r);
+    for (const result of results.value) {
+        if (!map.has(result.label)) map.set(result.label, []);
+        map.get(result.label).push(result);
     }
     return [...map.entries()].map(([label, items]) => ({ label, items }));
 });
 
 function moveFocus(dir) {
     const list = flat.value;
-    const idx = list.findIndex((r) => r.path === focusedPath.value);
+    const idx = list.findIndex((result) => result.path === focusedPath.value);
     const next = Math.max(0, Math.min(list.length - 1, idx + dir));
     focusedPath.value = list[next]?.path ?? null;
 }
 
 function selectFocused() {
-    const r = flat.value.find((r) => r.path === focusedPath.value);
-    if (r) select(r);
+    const result = flat.value.find(
+        (result) => result.path === focusedPath.value,
+    );
+    if (result) select(result);
 }
 
-function select(r) {
-    emit("open", r);
+function select(path) {
+    emit("open", path);
     emit("close");
 }
 
-function pageName(r) {
-    const base = r.rel
+function pageName(result) {
+    const base = result.path
         .split("/")
         .pop()
         .replace(/\.\w+$/, "");
     return base.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function displayTitle(r) {
-    if (r.matchType === "title" && r.snippets[0]) {
-        return r.snippets[0].replace(/^#+\s*/, "").replace(/^title:\s*/i, "");
+function displayTitle(result) {
+    if (result.matchType === "title" && result.snippets[0]) {
+        return result.snippets[0]
+            .replace(/^#+\s*/, "")
+            .replace(/^title:\s*/i, "");
     }
-    return pageName(r);
+    return pageName(result);
 }
 </script>
 
